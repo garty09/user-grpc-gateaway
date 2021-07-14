@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+option go_package = "buf.build/pah-an/test";
+package proto;
+
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+// UserService handles commands dispatch and user view actions
+service UserService {
+  rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse){
+    option (google.api.http) = {
+      delete: "/v1/user/{id}"
+    };
+  }
+
+  rpc InsertUser (InsertUserRequest) returns (InsertUserResponse){
+    option (google.api.http) = {
+      post: "/v1/user"
+      body: "*"
+    };
+  }
+
+  rpc ListUsers (ListUserRequest) returns (ListUserResponse){
+    option (google.api.http) = {
+      get: "/v1/user"
+      body: "*"
+    };
+  }
+}
+
+// User object
+message User {
+  int64 id = 1;
+  string fio = 2;
+  string email = 3;
+  string phone = 4;
+}
+
+// DeleteUserRequest is a request data to read user
+message DeleteUserRequest {
+  int64 id = 1;
+}
+
+// DeleteUserResponse is a response of delete user
+message DeleteUserResponse {
+  bool deleted = 1;
+}
+
+// InsertUserRequest
+message InsertUserRequest {
+  string fio = 2;
+  string email = 3;
+  string phone = 4;
+}
+
+// InsertUserResponse
+message InsertUserResponse {
+  bool added = 1;
+}
+
+// ListUserRequest is a request data to read all user for a given page
+message ListUserRequest {
+  int64 page = 1;
+}
+
+// ListUserResponse list of all users
+message ListUserResponse {
+  repeated User users = 1;
+  int64 page = 2;
+  int64 limit = 3;
+}
