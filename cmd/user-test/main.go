@@ -19,6 +19,7 @@ import (
 	"user_test/internal"
 	"user_test/internal/config"
 	"user_test/internal/model"
+	"user_test/internal/pub"
 )
 
 var flagConfig = flag.String("config", "./config/config.yml", "path to the config file")
@@ -44,13 +45,14 @@ func run() error {
 		}
 	}()
 
+	p := pub.NewProducer(cfg.Brokers)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	s := grpc.NewServer()
 	test.RegisterUserServiceServer(s, &internal.RPCServer{
-		Repo: model.NewRepository(db, cache),
+		Repo: model.NewRepository(db, cache, p),
 	})
 	lis, _ := net.Listen("tcp", "localhost:"+strconv.Itoa(cfg.GRPCPort))
 	go s.Serve(lis)

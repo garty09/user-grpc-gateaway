@@ -23,7 +23,9 @@ RUN go mod verify
 
 # copy source files and build the binary
 COPY . .
-RUN make build
+RUN go build \
+    -mod=readonly \
+    -a -o /app/server ./cmd/user-test
 
 
 FROM alpine:latest
@@ -31,9 +33,8 @@ RUN apk --no-cache add ca-certificates bash
 RUN mkdir -p /var/log/app
 WORKDIR /app/
 COPY --from=build /usr/local/bin/migrate /usr/local/bin
-COPY --from=build /app/migrations ./migrations/
+COPY --from=build /app/testdata ./migrations/
 COPY --from=build /app/server .
-COPY --from=build /app/scripts/entrypoint.sh .
 COPY --from=build /app/config/*.yml ./config/
 RUN ls -la
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["/app/server"]

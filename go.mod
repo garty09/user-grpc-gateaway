@@ -3,6 +3,7 @@ module user_test
 go 1.16
 
 require (
+	github.com/Shopify/sarama v1.29.1
 	github.com/go-redis/redis/v8 v8.11.0
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0

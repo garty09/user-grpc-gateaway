@@ -17,8 +17,9 @@ type Config struct {
 	HTTPPort int `yaml:"http_port"`
 	GRPCPort int `yaml:"grpc_port"`
 	// the data source name (DSN) for connecting to the database
-	DSN       string `yaml:"dsn"`
-	RedisAddr string
+	DSN       string   `yaml:"dsn"`
+	RedisAddr string   `yaml:"redis_addr"`
+	Brokers   []string `yaml:"brokers"`
 }
 
 func (c Config) Validate() error {
@@ -27,6 +28,9 @@ func (c Config) Validate() error {
 	}
 	if c.RedisAddr == "" {
 		return fmt.Errorf("redis connect string in empty")
+	}
+	if len(c.Brokers) == 0 {
+		return fmt.Errorf("broker address in empty")
 	}
 	if c.HTTPPort <= 0 && c.HTTPPort > 64000 {
 		return fmt.Errorf("http not in range")

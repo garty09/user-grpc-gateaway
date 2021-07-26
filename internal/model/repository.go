@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 
+	"github.com/Shopify/sarama"
 	"github.com/go-redis/redis/v8"
 
 	test "user_test/gen/go/proto"
@@ -25,21 +27,56 @@ type UserModel struct {
 	CreatedAt   time.Time
 }
 
+type MsgData struct {
+	Timestamp uint64 `json:"timestamp"`
+	UserID    uint64 `json:"userId"`
+
+	encoded []byte
+	err     error
+}
+
+func (d *MsgData) ensureEncoded() {
+	if d.encoded == nil && d.err == nil {
+		d.encoded, d.err = json.Marshal(d)
+	}
+}
+
+func (d *MsgData) Length() int {
+	d.ensureEncoded()
+	return len(d.encoded)
+}
+
+func (d *MsgData) Encode() ([]byte, error) {
+	d.ensureEncoded()
+	return d.encoded, d.err
+}
+
 type Repository struct {
 	db    *sql.DB
 	cache redis.UniversalClient
+	p     sarama.AsyncProducer
 }
 
-func NewRepository(db *sql.DB, cache redis.UniversalClient) *Repository {
-	return &Repository{db: db, cache: cache}
+func NewRepository(db *sql.DB, cache redis.UniversalClient, p sarama.AsyncProducer) *Repository {
+	return &Repository{db: db, cache: cache, p: p}
 }
 
 // InsertUser insert record
 func (r *Repository) InsertUser(ctx context.Context, user *test.InsertUserRequest) error {
-	query := "INSERT INTO public.user_name (fio, email, phone_number, created_at) VALUES ($1, $2, $3, now())"
-	err := r.db.QueryRowContext(ctx, query, user.Fio, user.Email, user.Phone).Err()
+	lastInsertId := 0
+	now := time.Now()
+	query := "INSERT INTO public.user_name (fio, email, phone_number, created_at) VALUES ($1, $2, $3, $4) RETURNING id"
+	err := r.db.QueryRowContext(ctx, query, user.Fio, user.Email, user.Phone, now).Scan(&lastInsertId)
 	if err != nil {
 		return err
+	}
+	r.p.Input() <- &sarama.ProducerMessage{
+		Topic: "users",
+		Key:   sarama.StringEncoder(strconv.FormatInt(now.UnixNano(), 10)),
+		Value: &MsgData{
+			Timestamp: uint64(now.UnixNano()),
+			UserID:    uint64(lastInsertId),
+		},
 	}
 	_ = r.cache.Del(ctx, userPageKey).Err()
 	return nil
